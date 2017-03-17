@@ -17,8 +17,6 @@ Funtions Explained
 -------------------
 ``debug()``
 
-.. code-block:: python
-
     print("Scan: ");
     print(" OpenPaths: ");
     for i in range(0, len(my_waypoints)):
@@ -31,9 +29,7 @@ Funtions Explained
 
 This prints out some important information for debugging. For example, it prints out what paths have been scanned at every waypoint. It shows a list of the paths that are open and those that have been explored for that waypoint.
 
-``def checkManualExit()``
-
-.. code-block:: python
+``checkManualExit()``
 
     if (button.check_buttons(buttons=['left','right'])):
         stopMotors();
@@ -42,4 +38,19 @@ This prints out some important information for debugging. For example, it prints
     
 Simply checks if both the left and right button on the EV3 brick are pressed simultaneously. If they are, the program exits. 
 
+``getGlobalDirection(heading)``
 
+    reducedHeading = heading % 360;
+    if (reducedHeading >= 315 or reducedHeading < 45):
+        reducedHeading = 0;
+    if (reducedHeading >= 45 and reducedHeading < 135):
+        reducedHeading = 90;
+    if (reducedHeading >= 135 and reducedHeading < 225):
+        reducedHeading = 180;
+    if (reducedHeading >= 225 and reducedHeading < 315):
+        reducedHeading = -90; 
+    return reducedHeading;
+    
+This function takes in any 'heading' or angle as an argument. It will then return the value of that angle as either 0, -90, 90 or 180 degrees. For example, passing in a value of 720 degrees will simply return 0. This is because 720 degrees is 360 degrees, which is 0 degrees.
+Why is this done?
+This is done because we want the robot to call forward by only 0 degrees. We don't want the robot to record an opening at 0 degrees and then at some later point as 360 degrees.
