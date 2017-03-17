@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 ''' 
-    See README for more information
+See README for more information
 ''''''
 #NEED TO ADD: Try to cut out sleep times
 #NEED TO ADD: Fine-Tuned turns on recall path
