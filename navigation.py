@@ -90,7 +90,7 @@ def debug():
     for i in range(0, len(my_waypoints)):
         my_waypoints[i].printExplored();
     print("");
-
+    
 
 def checkManualExit():
     if (button.check_buttons(buttons=['left','right'])):
