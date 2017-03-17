@@ -29,7 +29,7 @@ SCAN_OPEN_DISTANCE = 400;
 def checkManualExit():
     if (button.check_buttons(buttons=['left','right'])):
         exit();
-
+        
 def stopMotors():
     leftMotor.stop();
     rightMotor.stop();
