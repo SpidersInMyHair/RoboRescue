@@ -3,7 +3,6 @@
     See README for more information
 ''''''
 #NEED TO ADD: Try to cut out sleep times
-#NEED TO ADD: HOLD the SONAR forward on imminent 
 #NEED TO ADD: Fine-Tuned turns on recall path
 '''
 
@@ -27,11 +26,11 @@ sonar_state = 1;
 #Important 'Constants' These should BE CHANGED BASED ON PHYSICAL DESIGN OF THE ROBOT
 FORWARD_SPEED = 80;
 FORWARD_LENIANCY = 5;
-STOP_DISTANCE = 240;
-SCAN_OPEN_DISTANCE = 400;
+STOP_DISTANCE = 250;
+SCAN_OPEN_DISTANCE = 410;
 TURN_SPEED = 800;
-SONAR_SPEED = 800;
-SONAR_RESET_SLEEP = 1000;
+SONAR_SPEED = 1000;
+SONAR_RESET_SLEEP = 1000;       
 RETURN_PHASE = False;
 
 #Prints this so we know program is not stuck building
@@ -86,7 +85,6 @@ def debug():
         my_waypoints[i].printExplored();
     print("");
 
-
 def checkManualExit():
     if (button.check_buttons(buttons=['left','right'])):
         stopMotors();
@@ -97,14 +95,14 @@ def checkManualExit():
 def getGlobalDirection(heading):
     reducedHeading = heading % 360;
     if (reducedHeading >= 315 or reducedHeading < 45):
-        return 0;
+        reducedHeading = 0;
     if (reducedHeading >= 45 and reducedHeading < 135):
-        return 90;
+        reducedHeading = 90;
     if (reducedHeading >= 135 and reducedHeading < 225):
-        return 180;
+        reducedHeading = 180;
     if (reducedHeading >= 225 and reducedHeading < 315):
-        return -90; 
-
+        reducedHeading = -90; 
+    return reducedHeading;
 
 def stopMotors():
     leftMotor.stop();
@@ -115,16 +113,11 @@ def turnSonar(position):
     smallMotor.wait_while('running');
 
 def resetSonar():
-    if (smallMotor.position_sp != 0):
-        turnSonar(0);
-    smallMotor.run_timed(time_sp = SONAR_RESET_SLEEP, speed_sp = 0, stop_action="hold");
-
-
+    turnSonar(0);
+    smallMotor.run_timed(time_sp=SONAR_RESET_SLEEP, speed_sp=0, stop_action="hold");
+    
 #Keeps the robot moving in the direction it was facing since last turn
 def moveForward(speed):
-    if (sonic.value() < STOP_DISTANCE + 100) and (smallMotor.position_sp == 0):            
-        speed = speed/2;        
-        #sonar_hold = True; need to get sonar to hold
     if (gyro.value() - headedDirection > FORWARD_LENIANCY):
         leftMotor.run_direct(duty_cycle_sp=speed * 0.9);
         rightMotor.run_direct(duty_cycle_sp=speed);
@@ -158,7 +151,10 @@ def turnRelative(degree):
 def scanForIntersection():
     global sonar_state;
     if ('holding' in smallMotor.state):
-        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE)):
+        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE + 50)):
+            while (sonic.value() > STOP_DISTANCE):
+                leftMotor.run_direct(duty_cycle_sp=FORWARD_SPEED/2);
+                rightMotor.run_direct(duty_cycle_sp=FORWARD_SPEED/2);
             return True;    
         elif ((smallMotor.position_sp != 0) and (sonic.value() > SCAN_OPEN_DISTANCE)):
             return True;
@@ -173,7 +169,7 @@ def scanForIntersection():
 
 #Once at an intersection, looks around at an intersection to record where any openings are 
 def scanOpenings(headingSkip):
-    sleep(0.5);   #let the gyro settle before passing a value to turn_Relative
+    sleep(1);   #let the gyro settle before passing a value to turn_Relative
     turnRelative(getGlobalDirection(headedDirection - gyro.value()));           #Ensure alignment before manouveres
     print("SONAR at pos: " +str(smallMotor.position_sp))
     print("GYRO at pos: " +str(gyro.value()));
@@ -187,7 +183,7 @@ def scanOpenings(headingSkip):
             openPaths.append(headingSkip);
             continue;
         turnSonar(i);
-        sleep(0.5);
+        sleep(1);           #have to let the gyro get a value - otherwise will be a false value
         print("     scanner position (not skipped): " + str(smallMotor.position_sp) + " @ " + str(sonic.value()));
         if (sonic.value() > SCAN_OPEN_DISTANCE):
             print( "        scanned an open path at: " + str(getGlobalDirection(gyro.value() + 90*i)));
@@ -211,6 +207,7 @@ def exploreOpenings():
 #Begin following recall path until waypoint with unexplored path found
 def recallDeadend():
     while (my_waypoints[len(my_waypoints) - 1].hasUnexplored() == False):
+        sleep(1);
         turnRelative(getGlobalDirection(my_waypoints[len(my_waypoints) - 1].getRecallPath()-gyro.value()));
         while (not scanForIntersection()): 
             moveForward(FORWARD_SPEED);
@@ -221,6 +218,7 @@ def recallDeadend():
 
 #Begin following recall path until at maze start
 def recallPathway():
+    sleep(1);
     turnRelative(getGlobalDirection(my_waypoints[len(my_waypoints) - 1].getRecallPath()-gyro.value()));
     my_waypoints.pop();
 
@@ -233,3 +231,4 @@ while checkManualExit():
         stopMotors();
         scanOpenings(getGlobalDirection(gyro.value() + smallMotor.position_sp));
         exploreOpenings(); 
+
