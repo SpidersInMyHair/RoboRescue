@@ -24,13 +24,13 @@ smallMotor.run_to_abs_pos(position_sp=0, speed_sp=500, stop_action="hold");
 sonar_state = 1;
 
 #Important 'Constants' These should BE CHANGED BASED ON PHYSICAL DESIGN OF THE ROBOT
-FORWARD_SPEED = 80;
+FORWARD_SPEED = 60;
 FORWARD_LENIANCY = 5;
-STOP_DISTANCE = 250;
-SCAN_OPEN_DISTANCE = 410;
+STOP_DISTANCE = 220;
+SCAN_OPEN_DISTANCE = 400;
 TURN_SPEED = 800;
-SONAR_SPEED = 1000;
-SONAR_RESET_SLEEP = 1000;       
+SONAR_SPEED = 800;
+SONAR_RESET_SLEEP = 1150;       
 RETURN_PHASE = False;
 
 #Prints this so we know program is not stuck building
@@ -91,7 +91,6 @@ def checkManualExit():
         exit();
     return True;
 
-
 def getGlobalDirection(heading):
     reducedHeading = heading % 360;
     if (reducedHeading >= 315 or reducedHeading < 45):
@@ -109,13 +108,16 @@ def stopMotors():
     rightMotor.stop();
 
 def turnSonar(position):
-    smallMotor.run_to_abs_pos(position_sp=90*position, speed_sp=SONAR_SPEED, stop_action="hold");
-    smallMotor.wait_while('running');
+    if (smallMotor.position_sp != 90*position):
+        smallMotor.run_to_abs_pos(position_sp=90*position, speed_sp=SONAR_SPEED, stop_action="hold");
+        smallMotor.wait_while('running');
+        sleep(0.5);
 
 def resetSonar():
     turnSonar(0);
     smallMotor.run_timed(time_sp=SONAR_RESET_SLEEP, speed_sp=0, stop_action="hold");
     
+
 #Keeps the robot moving in the direction it was facing since last turn
 def moveForward(speed):
     if (gyro.value() - headedDirection > FORWARD_LENIANCY):
@@ -127,7 +129,6 @@ def moveForward(speed):
     else:
         leftMotor.run_direct(duty_cycle_sp=speed);
         rightMotor.run_direct(duty_cycle_sp=speed);
-
 
 #A positive degree will turn this clockwise and a negative degree will turn anti-clockwise
 def turnRelative(degree):
@@ -144,17 +145,15 @@ def turnRelative(degree):
     stopMotors(); 
     resetSonar();
     headedDirection = gyro.value();
-    print("Went from: " +str(headedDirection - degree)+" to "+str(headedDirection));
 
 
-#Continuously runs while robot is moving foward to check if at an intersection
+#Continuously runs while robot is moving forward to check if at an intersection
 def scanForIntersection():
     global sonar_state;
     if ('holding' in smallMotor.state):
-        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE + 50)):
+        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE + 150)):
             while (sonic.value() > STOP_DISTANCE):
-                leftMotor.run_direct(duty_cycle_sp=FORWARD_SPEED/2);
-                rightMotor.run_direct(duty_cycle_sp=FORWARD_SPEED/2);
+                pass;
             return True;    
         elif ((smallMotor.position_sp != 0) and (sonic.value() > SCAN_OPEN_DISTANCE)):
             return True;
@@ -168,31 +167,22 @@ def scanForIntersection():
 
 
 #Once at an intersection, looks around at an intersection to record where any openings are 
-def scanOpenings(headingSkip):
-    sleep(1);   #let the gyro settle before passing a value to turn_Relative
+def scanOpenings():
+    sleep(1.0);   #let the gyro settle before passing a value to turn_Relative
     turnRelative(getGlobalDirection(headedDirection - gyro.value()));           #Ensure alignment before manouveres
-    print("SONAR at pos: " +str(smallMotor.position_sp))
-    print("GYRO at pos: " +str(gyro.value()));
-    print("Skipping Heading: "+str(headingSkip)); 
     openPaths = [];
     openPaths.append(getGlobalDirection(gyro.value() - 180));
     for i in range (-1,2):
-        if (i == 0) and (headingSkip == getGlobalDirection(gyro.value())):
-            continue;
-        elif (headingSkip == getGlobalDirection(gyro.value() + 90*i)):
-            openPaths.append(headingSkip);
-            continue;
         turnSonar(i);
-        sleep(1);           #have to let the gyro get a value - otherwise will be a false value
+        sleep(1.0);           #have to let the gyro get a value - otherwise will be a false value
         print("     scanner position (not skipped): " + str(smallMotor.position_sp) + " @ " + str(sonic.value()));
         if (sonic.value() > SCAN_OPEN_DISTANCE):
-            print( "        scanned an open path at: " + str(getGlobalDirection(gyro.value() + 90*i)));
             openPaths.append(getGlobalDirection(gyro.value() + 90*i));
     my_waypoints.append(Waypoint(openPaths));
     my_waypoints[len(my_waypoints) - 1].addExploredPath(getGlobalDirection(gyro.value() - 180)); 
 
 
-#For choosing and going down a NEW open pathway of intersection, not used on recall phase
+#For choosing and going down a NEW open pathway of intersection, not used on FINAL rescue phase
 def exploreOpenings():  
     debug();
     choices = my_waypoints[len(my_waypoints) - 1].getOpenPaths();   
@@ -201,26 +191,20 @@ def exploreOpenings():
             turnRelative(getGlobalDirection(choices[i] - gyro.value())); 
             my_waypoints[len(my_waypoints) - 1].addExploredPath(getGlobalDirection(gyro.value()));
             return;
-    recallDeadend();
+    recallPathway();
    
 
 #Begin following recall path until waypoint with unexplored path found
-def recallDeadend():
+def recallPathway():
     while (my_waypoints[len(my_waypoints) - 1].hasUnexplored() == False):
         sleep(1);
         turnRelative(getGlobalDirection(my_waypoints[len(my_waypoints) - 1].getRecallPath()-gyro.value()));
         while (not scanForIntersection()): 
             moveForward(FORWARD_SPEED);
         stopMotors();
+        turnRelative(getGlobalDirection(headedDirection - gyro.value()));
         my_waypoints.pop();
     exploreOpenings();      
-        
-
-#Begin following recall path until at maze start
-def recallPathway():
-    sleep(1);
-    turnRelative(getGlobalDirection(my_waypoints[len(my_waypoints) - 1].getRecallPath()-gyro.value()));
-    my_waypoints.pop();
 
 
 #Main Below Here
@@ -229,6 +213,5 @@ while checkManualExit():
     moveForward(FORWARD_SPEED);
     if (scanForIntersection()): 
         stopMotors();
-        scanOpenings(getGlobalDirection(gyro.value() + smallMotor.position_sp));
+        scanOpenings();
         exploreOpenings(); 
-
