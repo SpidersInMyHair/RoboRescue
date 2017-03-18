@@ -13,6 +13,19 @@ When an intersection is reached that has no unexplored open paths (for example a
 the previous waypoint. It will continue to do this until it has returned to a waypoint where there is still something to be explored.
 
 
+Changelog
+----------
+
+-Removed the feature that skipped scanning of the direction that triggered the intersection scan. This is because while the
+robot was moving and scanning simultaneously - with the SONAR sweeping as fast as possible to avoid missing possible
+intersections - it was returning a false distance value due to the speed of the SONAR sweeping. Hence this was not accurate and
+so removed. Now, even the path that triggered the intersection search will still be scanned (in the slower and more accurate,
+stationery scan) as it may have been a false reading initially.
+
+-Changed some of the constant values to better handle the maze specification of 42cm length.
+-Added a sleep timer to the sweeping of the SONAR to make the moving SONAR readings more accurate. Does this mean that the
+heading skipping feature can be implemented?
+
 Funtions Explained
 -------------------
 Explains what each of the functions do. Looking at the relevent functions in navigation.py while reading this will really help.
