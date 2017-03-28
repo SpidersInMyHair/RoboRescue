@@ -2,8 +2,8 @@
 ''' 
 See README for more information
 ''''''
-#NEED TO ADD: Try to cut out sleep times
-#NEED TO ADD: Fine-Tuned turns on recall path
+#NEED TO ADD: Fix the sometimes not scanning a distance properly (thinking large opening is <200) - due to SONAR only turning about 75
+#NEED TO ADD: Fix accumulation of misalignments/direction errors
 '''
 
 #library for using fuctions defined by ev3dev etc.
@@ -13,24 +13,26 @@ from time import sleep
 #Important declarations and assignments
 button = Button();
 display = Screen();
-gyro = GyroSensor('in1');
-sonic = UltrasonicSensor('in2');
-smallMotor = MediumMotor('outA');
-leftMotor = LargeMotor('outB');
-rightMotor = LargeMotor('outC');
+gyro = GyroSensor();
+sonic = UltrasonicSensor();
+color = ColorSensor();
+smallMotor = MediumMotor('outC');
+leftMotor = LargeMotor('outA');
+rightMotor = LargeMotor('outD');
 gyro.mode = 'GYRO-ANG';
+color.mode = 'RGB-RAW';
 headedDirection = gyro.value();
 smallMotor.run_to_abs_pos(position_sp=0, speed_sp=500, stop_action="hold");
 sonar_state = 1;
 
 #Important 'Constants' These should BE CHANGED BASED ON PHYSICAL DESIGN OF THE ROBOT
 FORWARD_SPEED = 60;
-FORWARD_LENIANCY = 5;
-STOP_DISTANCE = 220;
-SCAN_OPEN_DISTANCE = 400;
-TURN_SPEED = 800;
+FORWARD_LENIANCY = 2;
+STOP_DISTANCE = 175;
+SCAN_OPEN_DISTANCE = 360;
+TURN_SPEED = 600;
 SONAR_SPEED = 800;
-SONAR_RESET_SLEEP = 1150;       
+SONAR_RESET_SLEEP = 1250;       
 RETURN_PHASE = False;
 
 #Prints this so we know program is not stuck building
@@ -111,7 +113,7 @@ def turnSonar(position):
     if (smallMotor.position_sp != 90*position):
         smallMotor.run_to_abs_pos(position_sp=90*position, speed_sp=SONAR_SPEED, stop_action="hold");
         smallMotor.wait_while('running');
-        sleep(0.5);
+        sleep(1.0);                         #Hold the sonar here for at least 0.5 seconds so that a true value can be obtained
 
 def resetSonar():
     turnSonar(0);
@@ -143,15 +145,17 @@ def turnRelative(degree):
         leftMotor.run_forever(speed_sp=TURN_SPEED*speedModifier);
         rightMotor.run_forever(speed_sp=-TURN_SPEED*speedModifier); 
     stopMotors(); 
+    sleep(1.0);
     resetSonar();
     headedDirection = gyro.value();
+    print("     Headed direction set to: " + str(headedDirection));
 
 
 #Continuously runs while robot is moving forward to check if at an intersection
 def scanForIntersection():
     global sonar_state;
     if ('holding' in smallMotor.state):
-        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE + 150)):
+        if ((smallMotor.position_sp == 0) and (sonic.value() <= STOP_DISTANCE*2)):
             while (sonic.value() > STOP_DISTANCE):
                 pass;
             return True;    
@@ -168,16 +172,16 @@ def scanForIntersection():
 
 #Once at an intersection, looks around at an intersection to record where any openings are 
 def scanOpenings():
-    sleep(1.0);   #let the gyro settle before passing a value to turn_Relative
-    turnRelative(getGlobalDirection(headedDirection - gyro.value()));           #Ensure alignment before manouveres
+    turnRelative(getGlobalDirection(headedDirection - gyro.value()));  #Ensure alignment before manouveres
     openPaths = [];
     openPaths.append(getGlobalDirection(gyro.value() - 180));
     for i in range (-1,2):
         turnSonar(i);
-        sleep(1.0);           #have to let the gyro get a value - otherwise will be a false value
         print("     scanner position (not skipped): " + str(smallMotor.position_sp) + " @ " + str(sonic.value()));
         if (sonic.value() > SCAN_OPEN_DISTANCE):
             openPaths.append(getGlobalDirection(gyro.value() + 90*i));
+        if (color.value(0) > 150):
+            Sound.beep();
     my_waypoints.append(Waypoint(openPaths));
     my_waypoints[len(my_waypoints) - 1].addExploredPath(getGlobalDirection(gyro.value() - 180)); 
 
@@ -197,7 +201,6 @@ def exploreOpenings():
 #Begin following recall path until waypoint with unexplored path found
 def recallPathway():
     while (my_waypoints[len(my_waypoints) - 1].hasUnexplored() == False):
-        sleep(1);
         turnRelative(getGlobalDirection(my_waypoints[len(my_waypoints) - 1].getRecallPath()-gyro.value()));
         while (not scanForIntersection()): 
             moveForward(FORWARD_SPEED);
