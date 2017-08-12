@@ -16,15 +16,11 @@ the previous waypoint. It will continue to do this until it has returned to a wa
 Changelog
 ----------
 
--Removed the feature that skipped scanning of the direction that triggered the intersection scan. This is because while the
-robot was moving and scanning simultaneously - with the SONAR sweeping as fast as possible to avoid missing possible
-intersections - it was returning a false distance value due to the speed of the SONAR sweeping. Hence this was not accurate and
-so removed. Now, even the path that triggered the intersection search will still be scanned (in the slower and more accurate,
-stationery scan) as it may have been a false reading initially.
+ Added the color sensor checking for orange (only does this when robot is moving forward). If it detects orange, motors should stop
+ robot should beep and RETURN_PHASE set to True.
+ Added loop backtracking only if necessary. So does not backtrack a loop if every waypoint in that loop is explored.
+ Added forward alignment as well as reverse alignment when a forward closed wall is available to use as reference for alignment.
 
--Changed some of the constant values to better handle the maze specification of 42cm length.
--Added a sleep timer to the sweeping of the SONAR to make the moving SONAR readings more accurate. Does this mean that the
-heading skipping feature can be implemented?
 
 Funtions Explained
 -------------------
