@@ -1,5 +1,8 @@
 # RoboRescue
 The robot that searches through a maze, collects a target and then exits the maze.
+Written by Rishad Mahbub & Jason Ma
+For ENGG1000
+Dated 2017S1
 
 This is currently done through a waypoint system. A waypoint is created at every new intersection.
 A waypoint object contains 3 important things:
