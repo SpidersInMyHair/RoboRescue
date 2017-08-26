@@ -1,6 +1,6 @@
 # RoboRescue
 The robot that searches through a maze, collects a target and then exits the maze.
-Written by Rishad Mahbub & Jason Ma
+Written by Rishad Mahbub
 For ENGG1000
 Dated 2017S1
 
